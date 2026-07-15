@@ -96,3 +96,41 @@ def validate_row(row, spec):
                 violations.append(f"{field}={val}")
                 row[field] = "other"
     return row, violations
+
+
+def count_words(text):
+    return len(text.split())
+
+
+def count_sentences(text):
+    return len([s for s in re.split(r"[.!?]+", text) if s.strip()])
+
+
+def avg_sentence_len(text):
+    s = count_sentences(text)
+    w = count_words(text)
+    return round(w / s, 1) if s else 0.0
+
+
+def count_exclaims(text):
+    return text.count("!")
+
+
+def count_questions(text):
+    return text.count("?")
+
+
+def count_caps_words(text):
+    return len(re.findall(r"\b[A-Z]{2,}\b", text))
+
+
+# Registry of deterministic, text-derived fields. Specs reference these by name
+# so word counts and sentence stats are computed, never guessed by the model.
+COMPUTERS = {
+    "words": count_words,
+    "sentences": count_sentences,
+    "avg_sentence_len": avg_sentence_len,
+    "exclaims": count_exclaims,
+    "questions": count_questions,
+    "caps_words": count_caps_words,
+}
