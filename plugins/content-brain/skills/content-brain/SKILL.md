@@ -54,6 +54,7 @@ Heavy lifting lives in `scripts/`, referenced with the plugin root path. Always 
 - `ingest_rss.sh <feed-url> <dest-dir>`, pull an RSS/Atom feed (podcast, Substack, Beehiiv) into per-item markdown.
 - `transcribe.sh <file-or-dir> <dest-dir>`, transcribe audio/video with Whisper, or lift existing captions.
 - `local_scan.sh <root-dir>`, list candidate content files under a directory. Lists only; copies nothing.
+- `corpus_pass.py`, process a folder of notes one file per model call into a reconciled CSV, used by phases 6 and 7 to guarantee full, honest coverage. Invoke it as `python3 "${CLAUDE_PLUGIN_ROOT}"/scripts/corpus_pass.py <args>` (it is Python, not a shell script).
 
 Every script prints what it is about to do and is safe to re-run.
 
