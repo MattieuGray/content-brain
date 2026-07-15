@@ -31,6 +31,7 @@ python3 "${CLAUDE_PLUGIN_ROOT}/scripts/corpus_pass.py" \
   --spec "${CLAUDE_PLUGIN_ROOT}/scripts/specs/voice_feature_spec.json" \
   --out "<vault>/.content-brain/voice_features.csv" \
   --const medium=written \
+  --errors "<vault>/.content-brain/voice_features.written.errors.log" \
   --model haiku
 ```
 
@@ -42,6 +43,7 @@ python3 "${CLAUDE_PLUGIN_ROOT}/scripts/corpus_pass.py" \
   --spec "${CLAUDE_PLUGIN_ROOT}/scripts/specs/voice_feature_spec.json" \
   --out "<vault>/.content-brain/voice_features.csv" \
   --const medium=spoken \
+  --errors "<vault>/.content-brain/voice_features.spoken.errors.log" \
   --model haiku \
   --audit 10
 ```
@@ -63,7 +65,7 @@ print("files:", len(files), "rows:", len(rows), "reconciled:", len(files) == len
 PY
 ```
 
-If it does not reconcile, check `voice_features.csv.errors.log`, re-run the matching command (resumable), and only continue once files equals rows. If there is no written content, say so plainly and note Written Voice is light for now; if there are no transcripts, skip Spoken Voice and say so. Honest gaps are fine; a false claim of coverage is not.
+If it does not reconcile, check the pass error logs (`voice_features.written.errors.log` and `voice_features.spoken.errors.log`), re-run the matching command (resumable), and only continue once files equals rows. If there is no written content, say so plainly and note Written Voice is light for now; if there are no transcripts, skip Spoken Voice and say so. Honest gaps are fine; a false claim of coverage is not.
 
 **Audit.** Open a few of the rows the `--audit 10` flag printed and check the quotable lines are really verbatim in the source note and the register reads right. Fix the spec wording and re-run if a pattern is clearly wrong.
 

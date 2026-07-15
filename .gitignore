@@ -1,3 +1,5 @@
 .DS_Store
 *.log
+__pycache__/
+.pytest_cache/
 # nothing generated at runtime belongs in the repo
