@@ -17,6 +17,14 @@ def test_build_prompt_includes_content_and_keys():
     assert "STRICT" not in p
 
 
+def test_build_prompt_first_pass_lists_allowed():
+    # Regression: the model must be told the allowed values on the FIRST pass,
+    # not only on the stricter retry, or it cannot tag correctly out of the gate.
+    p = cp.build_prompt(SPEC, "x", stricter=False)
+    assert "A, B" in p
+    assert "STRICT" not in p
+
+
 def test_build_prompt_stricter_lists_allowed():
     p = cp.build_prompt(SPEC, "x", stricter=True)
     assert "STRICT" in p

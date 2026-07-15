@@ -219,14 +219,18 @@ def audit_sample(csv_path, n, id_field, seed=None):
 
 
 def build_prompt(spec, file_text, stricter=False):
-    """Assemble the per-file extraction prompt. In stricter mode (the retry),
-    the allowed values are spelled out so the model stops going out of list."""
+    """Assemble the per-file extraction prompt. The allowed values are always
+    listed so the model can choose correctly on the first pass; the stricter
+    retry only adds emphasis that out-of-list values are rejected."""
     parts = [spec["system_prompt"]]
-    if stricter and spec.get("allowed_values"):
-        parts.append(
-            "STRICT: for the fields below, choose ONLY from the allowed values. "
-            "Any value not in the list is invalid and will be rejected:"
-        )
+    if spec.get("allowed_values"):
+        if stricter:
+            parts.append(
+                "STRICT: for the fields below, choose ONLY from the allowed values. "
+                "Any value not in the list is invalid and will be rejected:"
+            )
+        else:
+            parts.append("For the fields below, choose only from these allowed values:")
         for field, allowed_list in spec["allowed_values"].items():
             parts.append(f"- {field}: {', '.join(allowed_list)}")
     parts.append(
