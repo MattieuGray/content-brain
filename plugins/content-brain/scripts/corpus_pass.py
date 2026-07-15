@@ -270,3 +270,92 @@ def process_file(path, spec, model, const=None, runner=None):
         row[k] = v
     row[spec["id_field"]] = file_id(path)
     return row
+
+
+def run(input_globs, spec, csv_path, errors_path, model, const=None, runner=None, progress=print):
+    """Process every not-yet-done file, append one row each, log failures, and
+    return the reconcile summary. Resumable and failure-tolerant by design."""
+    const = const or {}
+    runner = runner or call_model
+    files = enumerate_files(input_globs)
+    done = load_done_ids(csv_path, spec["id_field"])
+    fieldnames = build_fieldnames(spec, const)
+    for path in files:
+        fid = file_id(path)
+        if fid in done:
+            progress(f"skip   {fid} (already done)")
+            continue
+        try:
+            row = process_file(path, spec, model, const=const, runner=runner)
+            append_row(csv_path, serialize_row(row, spec, fieldnames), fieldnames)
+            v = row.get("schema_violations", "")
+            progress(f"ok     {fid}" + (f"  [violations: {v}]" if v else ""))
+        except Exception as e:
+            with open(errors_path, "a", encoding="utf-8") as fh:
+                fh.write(f"{fid}\t{type(e).__name__}: {str(e)[:300]}\n")
+            progress(f"ERROR  {fid}: {type(e).__name__}: {str(e)[:120]}")
+    summary = reconcile(input_globs, csv_path, errors_path, spec["id_field"])
+    progress(
+        f"RECONCILE files={summary['files']} rows={summary['rows']} "
+        f"errors={summary['errors']} reconciled={summary['reconciled']}"
+    )
+    return summary
+
+
+def load_spec(spec_path):
+    with open(spec_path, encoding="utf-8") as fh:
+        spec = json.load(fh)
+    spec.setdefault("id_field", "id")
+    spec.setdefault("allowed_values", {})
+    spec.setdefault("list_fields", [])
+    spec.setdefault("computed_fields", {})
+    for fn_name in spec["computed_fields"].values():
+        if fn_name not in COMPUTERS:
+            raise ValueError(f"unknown computed field function: {fn_name}")
+    return spec
+
+
+def main(argv=None):
+    ap = argparse.ArgumentParser(description="Per-file corpus processor for Content Brain.")
+    ap.add_argument("--input", required=True,
+                    help="comma-separated globs, e.g. '<vault>/wiki/sources/**/*.md'")
+    ap.add_argument("--spec", required=True, help="path to the extraction spec JSON")
+    ap.add_argument("--out", required=True, help="output CSV path")
+    ap.add_argument("--errors", default=None, help="errors log path (default: <out>.errors.log)")
+    ap.add_argument("--model", default="haiku",
+                    help="model alias/id for `claude -p --model` (default: haiku)")
+    ap.add_argument("--const", action="append", default=[], metavar="KEY=VALUE",
+                    help="constant column added to every row; repeatable")
+    ap.add_argument("--audit", type=int, default=0,
+                    help="print N random rows after the run for a human spot-check")
+    args = ap.parse_args(argv)
+
+    spec = load_spec(args.spec)
+    errors_path = args.errors or (args.out + ".errors.log")
+    const = {}
+    for item in args.const:
+        if "=" not in item:
+            ap.error(f"--const must be KEY=VALUE, got: {item}")
+        k, v = item.split("=", 1)
+        const[k] = v
+
+    summary = run(args.input, spec, args.out, errors_path, args.model, const=const)
+
+    audited = 0
+    if args.audit > 0:
+        sample = audit_sample(args.out, args.audit, spec["id_field"])
+        audited = len(sample)
+        print("\nAUDIT SAMPLE (verify these rows against their source files):")
+        for r in sample:
+            print(json.dumps(r, ensure_ascii=False))
+
+    pct = round(100 * audited / summary["files"]) if summary["files"] else 0
+    print(
+        f"\nCOVERAGE: {summary['rows']}/{summary['files']} files processed, "
+        f"{summary['errors']} errors, audited {audited} ({pct}%)."
+    )
+    return 0 if summary["reconciled"] else 1
+
+
+if __name__ == "__main__":
+    sys.exit(main())
