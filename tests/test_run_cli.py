@@ -55,7 +55,38 @@ def test_run_logs_errors_and_continues(tmp_path):
     )
     assert summary["rows"] == 0
     assert summary["errors"] == 3
-    assert summary["accounted"] is True
+    # every file errored -> all missing -> not accounted, not reconciled.
+    assert summary["missing"] == ["n0", "n1", "n2"]
+    assert summary["accounted"] is False
+    assert summary["reconciled"] is False
+
+
+def test_run_recovers_after_transient_error(tmp_path):
+    # bug #1: a transient failure on run 1 must not poison the gate forever.
+    # Run 2 re-processes the previously failed file (it has no row yet) and,
+    # because the error log is reset fresh each run, reaches reconciled=True.
+    src = _mk_notes(tmp_path, 3)  # n0="content 0", n1="content 1", n2="content 2"
+    csv_path = str(tmp_path / "out.csv")
+    errors_path = str(tmp_path / "err.log")
+    state = {"fail_n1": True}
+
+    def flaky_runner(prompt, model):
+        if state["fail_n1"] and "content 1" in prompt:
+            raise RuntimeError("transient boom")
+        return '{"pillars": ["A"], "summary": "s"}'
+
+    s1 = cp.run(f"{src}/*.md", SPEC, csv_path, errors_path, "haiku",
+                runner=flaky_runner, progress=lambda *a: None)
+    assert s1["errors"] == 1
+    assert s1["missing"] == ["n1"]
+    assert s1["reconciled"] is False
+
+    state["fail_n1"] = False  # the transient failure clears on retry
+    s2 = cp.run(f"{src}/*.md", SPEC, csv_path, errors_path, "haiku",
+                runner=flaky_runner, progress=lambda *a: None)
+    assert s2["errors"] == 0
+    assert s2["missing"] == []
+    assert s2["reconciled"] is True
 
 
 def test_load_spec_sets_defaults(tmp_path):

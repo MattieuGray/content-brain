@@ -51,7 +51,10 @@ def test_reconcile_counts(tmp_path):
     assert summary["files"] == 3
     assert summary["rows"] == 2
     assert summary["errors"] == 1
-    assert summary["accounted"] is True
+    # 'c' has no row, so it is missing; accounted/reconciled must both be False
+    # under the file-set contract (accounted = not missing and not duplicates).
+    assert summary["missing"] == ["c"]
+    assert summary["accounted"] is False
     assert summary["reconciled"] is False
 
 
@@ -63,6 +66,49 @@ def test_reconcile_clean(tmp_path):
     cp.append_row(csv_path, {"note_id": "a"}, ["note_id"])
     summary = cp.reconcile(f"{src}/*.md", csv_path, str(tmp_path / "err.log"), "note_id")
     assert summary["reconciled"] is True
+
+
+def test_reconcile_counts_only_current_glob(tmp_path):
+    # Two passes share one CSV (Phase 7: written-pass + spoken-pass -> one file).
+    # reconcile must count only the CURRENT glob's files, not every CSV row. (bug #2)
+    src = tmp_path / "src"
+    src.mkdir()
+    for name in ["C", "D"]:
+        (src / f"{name}.md").write_text("x")
+    csv_path = str(tmp_path / "out.csv")
+    for nid in ["A", "B", "C", "D"]:  # A,B belong to the OTHER pass
+        cp.append_row(csv_path, {"note_id": nid}, ["note_id"])
+    summary = cp.reconcile(f"{src}/*.md", csv_path, str(tmp_path / "err.log"), "note_id")
+    assert summary["files"] == 2
+    assert summary["rows"] == 2
+    assert summary["missing"] == []
+    assert summary["reconciled"] is True
+
+
+def test_reconcile_flags_missing_file(tmp_path):
+    src = tmp_path / "src"
+    src.mkdir()
+    (src / "a.md").write_text("x")
+    (src / "b.md").write_text("x")
+    csv_path = str(tmp_path / "out.csv")
+    cp.append_row(csv_path, {"note_id": "a"}, ["note_id"])  # 'b' never got a row
+    summary = cp.reconcile(f"{src}/*.md", csv_path, str(tmp_path / "err.log"), "note_id")
+    assert summary["missing"] == ["b"]
+    assert summary["reconciled"] is False
+
+
+def test_reconcile_flags_duplicate_stems(tmp_path):
+    # Two real files in different subdirs collide on the same filename stem.
+    # The gate must fail loud, not silently accept one row covering both. (bug #4)
+    (tmp_path / "x").mkdir()
+    (tmp_path / "y").mkdir()
+    (tmp_path / "x" / "dup.md").write_text("x")
+    (tmp_path / "y" / "dup.md").write_text("y")
+    csv_path = str(tmp_path / "out.csv")
+    cp.append_row(csv_path, {"note_id": "dup"}, ["note_id"])
+    summary = cp.reconcile(f"{tmp_path}/**/*.md", csv_path, str(tmp_path / "err.log"), "note_id")
+    assert summary["duplicate_ids"] == ["dup"]
+    assert summary["reconciled"] is False
 
 
 def test_audit_sample_size_and_determinism(tmp_path):

@@ -173,22 +173,39 @@ def append_row(csv_path, row, fieldnames):
 
 
 def reconcile(input_globs, csv_path, errors_path, id_field):
-    """Compare folder count against row count and error count.
-    reconciled=True means every file produced a row and nothing errored."""
+    """Coverage check computed from the CURRENT file set (not a raw row count),
+    so it is correct even when several passes share one CSV. reconciled=True
+    means: every file in this run's globs has a row, no two files collide on the
+    same id, and this run logged no errors.
+
+    Caveat (known, low probability): ids are filename stems. A file deleted and
+    later replaced across separate runs by a DIFFERENT file that reuses the same
+    stem can be skipped (its stem is already in the CSV) and still reconcile
+    true. Future hardening: path-relative or content-hash ids."""
     files = enumerate_files(input_globs)
-    rows = load_done_ids(csv_path, id_field)
+    expected_ids = [file_id(p) for p in files]
+    unique_expected = set(expected_ids)
+    covered = load_done_ids(csv_path, id_field)      # all ids present in the CSV
+    covered_here = covered & unique_expected          # rows for THIS run's files
+    missing = sorted(unique_expected - covered)
+    seen, dupes = set(), set()
+    for i in expected_ids:
+        if i in seen:
+            dupes.add(i)
+        seen.add(i)
+    duplicate_ids = sorted(dupes)
     n_errors = 0
     if os.path.exists(errors_path):
         with open(errors_path, encoding="utf-8") as fh:
             n_errors = sum(1 for line in fh if line.strip())
-    n_files = len(files)
-    n_rows = len(rows)
     return {
-        "files": n_files,
-        "rows": n_rows,
+        "files": len(files),
+        "rows": len(covered_here),
         "errors": n_errors,
-        "accounted": n_files == n_rows + n_errors,
-        "reconciled": n_files == n_rows and n_errors == 0,
+        "missing": missing,
+        "duplicate_ids": duplicate_ids,
+        "accounted": not missing and not duplicate_ids,
+        "reconciled": not missing and not duplicate_ids and n_errors == 0,
     }
 
 
@@ -280,6 +297,10 @@ def run(input_globs, spec, csv_path, errors_path, model, const=None, runner=None
     files = enumerate_files(input_globs)
     done = load_done_ids(csv_path, spec["id_field"])
     fieldnames = build_fieldnames(spec, const)
+    # Fresh error log each run: a file that failed before but now succeeds (has a
+    # row) must be able to reach reconciled=True. The skip set comes from the CSV,
+    # never from this log, so clearing it loses no state.
+    open(errors_path, "w", encoding="utf-8").close()
     for path in files:
         fid = file_id(path)
         if fid in done:
