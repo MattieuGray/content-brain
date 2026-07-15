@@ -66,4 +66,4 @@ You'll have a complete, private content brain on your Mac, and a summary page te
 
 ---
 
-Built by Mattieu Gray for Roland Frasier's Dragonfly Mastermind.
+Roland Frasier · Dragonfly Mastermind

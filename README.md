@@ -17,7 +17,7 @@ Hand members [`GETTING-STARTED.md`](./GETTING-STARTED.md). The short version, fr
 /content-brain
 ```
 
-> Members install from `rolandfrasier/content-brain`. Source and development live at `MattieuGray/content-brain`.
+> Members install from `rolandfrasier/content-brain`.
 
 ## What it does
 
@@ -66,4 +66,4 @@ GETTING-STARTED.md                     # the one-page handout for members
 - **Per-member tags.** The tag vocabulary is the owner's own frameworks, discovered in the interview. Nothing from any other person's system travels in the plugin.
 - **Resumable.** Progress lives in `<vault>/.content-brain/state.json`; re-running continues where it left off.
 
-Built by Mattieu Gray for Roland Frasier's Dragonfly Mastermind.
+Built for Roland Frasier's Dragonfly Mastermind.
