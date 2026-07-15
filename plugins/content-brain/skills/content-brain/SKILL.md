@@ -40,6 +40,18 @@ Run these phases in order. **Load the matching reference file only when you reac
 
 The connector playbook (`references/connector-playbook.md`) is a lookup table used inside phase 2 and phase 4, read it when resolving a source.
 
+## Completeness doctrine
+
+Some phases have to cover **every** file. Ingest (4) and transcribe (5) already do, they run as scripts that loop over the whole folder, so they don't depend on your attention. The danger is the phases where **you** have to read and understand every file, tag (6) and Voice DNA (7). A real library is far more than you can honestly read into one conversation. If you try, you will read a few dozen files, lose the rest as your context fills, and then over-claim, "I've tagged everything", off a sense of having done a lot rather than a fact. That is the one failure mode this build cannot have: the member is trusting the archive to be complete.
+
+So for any phase where you must read every file, follow three rules:
+
+1. **Count from disk, never from memory.** Build the work-list with a script (`list_notes.sh`, `local_scan.sh`, a `find`) so the number of items to process is a real number off the filesystem, not your recollection.
+2. **Fan the reading out.** Don't read hundreds of files yourself. Split the work-list into small batches and launch a subagent (the Task tool) per batch. Each worker gets a **fresh context**, reads its files **in full**, does the work, writes the result to disk, and returns only a compact report. You orchestrate; you never hold the whole corpus at once.
+3. **Recount before you claim done.** After the workers finish, re-run the work-list and confirm nothing is still pending. Report the real counts, and name any file that genuinely failed. "Done" means the recount says zero pending, not that you feel finished.
+
+If subagents aren't available in the member's setup, the guarantee still holds, work the on-disk list in small sequential batches and recount the same way; it's just slower. The doctrine is the work-list-and-recount, the fan-out is the accelerator. Phases 6 and 7 spell out exactly how this applies to tagging and to Voice DNA.
+
 ## Bundled scripts
 
 Heavy lifting lives in `scripts/`, referenced with the plugin root path. Always call them as:
@@ -54,6 +66,7 @@ Heavy lifting lives in `scripts/`, referenced with the plugin root path. Always 
 - `ingest_rss.sh <feed-url> <dest-dir>`, pull an RSS/Atom feed (podcast, Substack, Beehiiv) into per-item markdown.
 - `transcribe.sh <file-or-dir> <dest-dir>`, transcribe audio/video with Whisper, or lift existing captions.
 - `local_scan.sh <root-dir>`, list candidate content files under a directory. Lists only; copies nothing.
+- `list_notes.sh <dir> [marker-key]`, print a `DONE`/`PENDING` work-list of the markdown notes under a folder, based on whether each note's frontmatter already carries the marker. Used by the tag and voice phases to count coverage from disk. Lists only; edits nothing.
 
 Every script prints what it is about to do and is safe to re-run.
 
