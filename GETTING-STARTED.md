@@ -1,3 +1,5 @@
+**ROLAND FRASIER · DRAGONFLY MASTERMIND**
+
 # Getting Started with Content Brain
 
 This sets up your own **content brain**: one place on your Mac that holds everything you've ever made, organized, searchable, and in your own voice. It's guided the whole way. You don't need to be technical.
@@ -23,7 +25,7 @@ If you get stuck here, that's normal. Ask in the group and someone will get you 
 With Claude Code open, paste these two lines, one at a time, and press Enter after each:
 
 ```
-/plugin marketplace add mattieugray/content-brain
+/plugin marketplace add rolandfrasier/content-brain
 ```
 
 ```
@@ -61,3 +63,7 @@ It asks before it touches anything. Nothing you own leaves your computer unless 
 You'll have a complete, private content brain on your Mac, and a summary page telling you exactly what's inside. What you build on top of it next is up to you.
 
 **Questions?** Bring them to the group.
+
+---
+
+Built by Mattieu Gray for Roland Frasier's Dragonfly Mastermind.

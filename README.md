@@ -12,10 +12,12 @@ One command, an interview, and a guided pipeline that does the technical work fo
 Hand members [`GETTING-STARTED.md`](./GETTING-STARTED.md). The short version, from inside Claude Code:
 
 ```
-/plugin marketplace add mattieugray/content-brain
+/plugin marketplace add rolandfrasier/content-brain
 /plugin install content-brain@dragonfly
 /content-brain
 ```
+
+> Members install from `rolandfrasier/content-brain`. Source and development live at `MattieuGray/content-brain`.
 
 ## What it does
 
@@ -64,4 +66,4 @@ GETTING-STARTED.md                     # the one-page handout for members
 - **Per-member tags.** The tag vocabulary is the owner's own frameworks, discovered in the interview. Nothing from any other person's system travels in the plugin.
 - **Resumable.** Progress lives in `<vault>/.content-brain/state.json`; re-running continues where it left off.
 
-Built for the Dragonfly Mastermind.
+Built by Mattieu Gray for Roland Frasier's Dragonfly Mastermind.
