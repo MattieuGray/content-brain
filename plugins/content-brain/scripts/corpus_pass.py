@@ -47,3 +47,19 @@ def load_done_ids(csv_path, id_field):
             if r.get(id_field):
                 done.add(r[id_field])
     return done
+
+
+def extract_json(text):
+    """Pull a JSON object out of model output: strip a code fence if present,
+    then take the substring from the first '{' to the last '}'."""
+    if text is None:
+        raise ValueError("empty model output")
+    s = text.strip()
+    if s.startswith("```"):
+        s = re.sub(r"^```[a-zA-Z0-9]*\n?", "", s)
+        s = re.sub(r"\n?```\s*$", "", s)
+    start = s.find("{")
+    end = s.rfind("}")
+    if start == -1 or end == -1 or end < start:
+        raise ValueError(f"no JSON object found in model output: {text[:200]!r}")
+    return json.loads(s[start:end + 1])
