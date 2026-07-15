@@ -1,0 +1,15 @@
+{
+  "system_prompt": "You are analyzing ONE piece of a person's content to capture how they actually sound. Read the content below and extract only what is genuinely present. Return candidate signature phrases (expressions that recur, each written as the phrase followed by an approximate count in parentheses if it repeats), a few genuinely quotable verbatim lines pulled word for word from the content, a short factual description of their punctuation and formatting habits (lists, hyphens, parentheticals, one-line paragraphs, capitalization for emphasis), and a one-line description of their register. Do not invent phrases, quotes, or traits that are not in the content.",
+  "columns": ["signature_phrases", "quotable_lines", "punctuation_habits", "register"],
+  "list_fields": ["signature_phrases", "quotable_lines"],
+  "computed_fields": {
+    "word_count": "words",
+    "sentence_count": "sentences",
+    "avg_sentence_len": "avg_sentence_len",
+    "exclaim_count": "exclaims",
+    "question_count": "questions",
+    "caps_word_count": "caps_words"
+  },
+  "allowed_values": {"register": ["plain", "technical", "formal", "casual", "conversational", "other"]},
+  "id_field": "note_id"
+}

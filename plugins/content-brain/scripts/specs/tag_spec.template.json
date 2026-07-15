@@ -1,0 +1,7 @@
+{
+  "system_prompt": "You are tagging ONE piece of content for a personal knowledge vault. Read the content below and decide which of the member's own pillars it genuinely belongs to. Choose 1 to 3 pillars, only ones the content actually supports. If it fits none cleanly, return an empty pillars list rather than forcing one. Also pull a few free keywords (real topics, names, and terms that literally appear in the piece) and write a one-line factual summary. Do not invent anything that is not in the content.",
+  "columns": ["pillars", "keywords", "summary"],
+  "list_fields": ["pillars", "keywords"],
+  "allowed_values": {"pillars": ["__PILLARS__"]},
+  "id_field": "note_id"
+}
