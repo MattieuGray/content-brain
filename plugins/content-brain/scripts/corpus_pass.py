@@ -63,3 +63,36 @@ def extract_json(text):
     if start == -1 or end == -1 or end < start:
         raise ValueError(f"no JSON object found in model output: {text[:200]!r}")
     return json.loads(s[start:end + 1])
+
+
+def validate_row(row, spec):
+    """Coerce out-of-list categorical values to 'other' and record each as a
+    violation. Only fields that appear in spec['allowed_values'] are checked.
+    A list field is validated element by element; a bare string in a list field
+    is normalized to a one-element list first."""
+    allowed = spec.get("allowed_values", {})
+    list_fields = set(spec.get("list_fields", []))
+    violations = []
+    for field, allowed_list in allowed.items():
+        allowed_set = set(allowed_list)
+        val = row.get(field)
+        if field in list_fields:
+            if isinstance(val, list):
+                items = val
+            elif val in (None, ""):
+                items = []
+            else:
+                items = [val]
+            coerced = []
+            for item in items:
+                if item in allowed_set:
+                    coerced.append(item)
+                else:
+                    coerced.append("other")
+                    violations.append(f"{field}={item}")
+            row[field] = coerced
+        else:
+            if val not in allowed_set:
+                violations.append(f"{field}={val}")
+                row[field] = "other"
+    return row, violations
