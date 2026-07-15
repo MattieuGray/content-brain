@@ -134,3 +134,68 @@ COMPUTERS = {
     "questions": count_questions,
     "caps_words": count_caps_words,
 }
+
+
+def build_fieldnames(spec, const):
+    """Column order for the output CSV: id, model columns, computed fields,
+    constant columns (sorted for determinism), then schema_violations."""
+    fields = [spec["id_field"]]
+    fields += list(spec.get("columns", []))
+    fields += list(spec.get("computed_fields", {}).keys())
+    fields += sorted(const.keys())
+    fields += ["schema_violations"]
+    return fields
+
+
+def serialize_row(row, spec, fieldnames):
+    """Turn a row dict into CSV-ready values: list fields are joined with '; '."""
+    list_fields = set(spec.get("list_fields", []))
+    out = {}
+    for k in fieldnames:
+        v = row.get(k, "")
+        if k in list_fields and isinstance(v, list):
+            out[k] = "; ".join(str(x) for x in v)
+        elif v is None:
+            out[k] = ""
+        else:
+            out[k] = v
+    return out
+
+
+def append_row(csv_path, row, fieldnames):
+    """Append one row, writing the header first if the file is new."""
+    exists = os.path.exists(csv_path)
+    with open(csv_path, "a", newline="", encoding="utf-8") as fh:
+        w = csv.DictWriter(fh, fieldnames=fieldnames)
+        if not exists:
+            w.writeheader()
+        w.writerow(row)
+
+
+def reconcile(input_globs, csv_path, errors_path, id_field):
+    """Compare folder count against row count and error count.
+    reconciled=True means every file produced a row and nothing errored."""
+    files = enumerate_files(input_globs)
+    rows = load_done_ids(csv_path, id_field)
+    n_errors = 0
+    if os.path.exists(errors_path):
+        with open(errors_path, encoding="utf-8") as fh:
+            n_errors = sum(1 for line in fh if line.strip())
+    n_files = len(files)
+    n_rows = len(rows)
+    return {
+        "files": n_files,
+        "rows": n_rows,
+        "errors": n_errors,
+        "accounted": n_files == n_rows + n_errors,
+        "reconciled": n_files == n_rows and n_errors == 0,
+    }
+
+
+def audit_sample(csv_path, n, id_field, seed=None):
+    """Return up to n random rows for a human or second-pass spot-check."""
+    with open(csv_path, newline="", encoding="utf-8") as fh:
+        rows = list(csv.DictReader(fh))
+    if seed is not None:
+        random.seed(seed)
+    return random.sample(rows, min(n, len(rows)))
