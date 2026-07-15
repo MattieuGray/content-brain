@@ -1,7 +1,7 @@
 {
   "name": "dragonfly",
   "owner": {
-    "name": "Mattieu Gray"
+    "name": "Roland Frasier"
   },
   "description": "Content tooling for the Dragonfly Mastermind.",
   "plugins": [
