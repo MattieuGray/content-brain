@@ -199,3 +199,74 @@ def audit_sample(csv_path, n, id_field, seed=None):
     if seed is not None:
         random.seed(seed)
     return random.sample(rows, min(n, len(rows)))
+
+
+def build_prompt(spec, file_text, stricter=False):
+    """Assemble the per-file extraction prompt. In stricter mode (the retry),
+    the allowed values are spelled out so the model stops going out of list."""
+    parts = [spec["system_prompt"]]
+    if stricter and spec.get("allowed_values"):
+        parts.append(
+            "STRICT: for the fields below, choose ONLY from the allowed values. "
+            "Any value not in the list is invalid and will be rejected:"
+        )
+        for field, allowed_list in spec["allowed_values"].items():
+            parts.append(f"- {field}: {', '.join(allowed_list)}")
+    parts.append(
+        "Return ONLY a JSON object with exactly these keys: "
+        + ", ".join(spec["columns"])
+        + ". No prose, no markdown fence."
+    )
+    parts.append("---- CONTENT START ----")
+    parts.append(file_text)
+    parts.append("---- CONTENT END ----")
+    return "\n\n".join(parts)
+
+
+def file_id(path):
+    return os.path.splitext(os.path.basename(path))[0]
+
+
+def read_file_text(path):
+    return Path(path).read_text(encoding="utf-8", errors="replace")
+
+
+def call_model(prompt, model):
+    """Transport: one `claude -p --model <model>` call, prompt on stdin."""
+    result = subprocess.run(
+        ["claude", "-p", "--model", model],
+        input=prompt,
+        capture_output=True,
+        text=True,
+        timeout=300,
+    )
+    if result.returncode != 0:
+        raise RuntimeError(f"claude exited {result.returncode}: {result.stderr.strip()[:500]}")
+    return result.stdout
+
+
+def _extract_once(text, spec, model, runner, stricter):
+    raw = runner(build_prompt(spec, text, stricter=stricter), model)
+    data = extract_json(raw)
+    row = {c: data.get(c) for c in spec["columns"]}
+    return validate_row(row, spec)
+
+
+def process_file(path, spec, model, const=None, runner=None):
+    """Process one file into one row: model-extract the columns (retry once with
+    a stricter prompt if the first result violates the allowed lists), coerce
+    leftover violations, add deterministic computed fields and constant columns,
+    and stamp the id from the filename stem."""
+    const = const or {}
+    runner = runner or call_model
+    text = read_file_text(path)
+    row, violations = _extract_once(text, spec, model, runner, stricter=False)
+    if violations:
+        row, violations = _extract_once(text, spec, model, runner, stricter=True)
+    row["schema_violations"] = "; ".join(violations)
+    for field, fn_name in spec.get("computed_fields", {}).items():
+        row[field] = COMPUTERS[fn_name](text)
+    for k, v in const.items():
+        row[k] = v
+    row[spec["id_field"]] = file_id(path)
+    return row
